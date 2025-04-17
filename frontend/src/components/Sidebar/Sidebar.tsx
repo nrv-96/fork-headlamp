@@ -1,5 +1,6 @@
+import { Theme } from '@mui/material/styles';
 import { InlineIcon } from '@iconify/react';
-import { Button } from '@mui/material';
+import { Button, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import Grid from '@mui/material/Grid';
@@ -179,53 +180,54 @@ function updateItemSelected(
   };
 }
 
-export default function Sidebar() {
-  const sidebar = useTypedSelector(state => state.sidebar);
-  const {
-    isOpen,
-    isUserOpened,
-    isNarrow,
-    canExpand,
-    isTemporary: isTemporaryDrawer,
-  } = useSidebarInfo();
-  const isNarrowOnly = isNarrow && !canExpand;
-  const namespaces = useTypedSelector(state => state.filter.namespaces);
-  const dispatch = useDispatch();
-
-  const items = useSidebarItems(sidebar?.selected?.sidebar ?? undefined);
-
-  const search = namespaces.size !== 0 ? `?namespace=${[...namespaces].join('+')}` : '';
-
-  const handleToggleOpen = useCallback(() => {
-    dispatch(setWhetherSidebarOpen(!sidebar.isSidebarOpen));
-  }, [sidebar.isSidebarOpen]);
-
-  const linkArea = useMemo(
-    () => <DefaultLinkArea sidebarName={sidebar.selected.sidebar || ''} isOpen={isOpen} />,
-    [sidebar.selected.sidebar, isOpen]
-  );
-
-  const processedItems = useMemo(
-    () => items.map(item => updateItemSelected(item, sidebar.selected.item)),
-    [items, sidebar.selected.item]
-  );
-
-  if (sidebar.selected.sidebar === null || !sidebar?.isVisible) {
-    return null;
-  }
+// Add a Favorites section to the sidebar
+function FavoritesSection({ favorites, onToggleFavorite }: { favorites: SidebarItemProps[]; onToggleFavorite: (item: SidebarItemProps) => void }) {
+  const { t } = useTranslation();
 
   return (
-    <PureSidebar
-      items={processedItems}
-      open={isOpen}
-      openUserSelected={isUserOpened}
-      isNarrowOnly={isNarrowOnly}
-      isTemporaryDrawer={isTemporaryDrawer}
-      selectedName={sidebar?.selected.item}
-      search={search}
-      onToggleOpen={handleToggleOpen}
-      linkArea={linkArea}
-    />
+    <Box>
+      <Box sx={{ padding: 2, borderBottom: '1px solid #ddd' }}>
+        <Typography variant="h6">{t('translation|Favorites')}</Typography>
+      </Box>
+      <List>
+        {favorites.map(item => (
+          <SidebarItem
+            key={item.name}
+            {...item}
+            onClick={() => onToggleFavorite(item)}
+          />
+        ))}
+      </List>
+    </Box>
+  );
+}
+
+export default function Sidebar() {
+  const sidebar = useTypedSelector((state: RootState) => state.sidebar);
+  const dispatch = useDispatch();
+  const { isOpen } = useSidebarInfo();
+
+  const [favorites, setFavorites] = React.useState<SidebarItemProps[]>([]);
+
+  const handleToggleFavorite = (item: SidebarItemProps) => {
+    setFavorites((prevFavorites: SidebarItemProps[]) => {
+      const isFavorite = prevFavorites.some((fav: SidebarItemProps) => fav.name === item.name);
+      if (isFavorite) {
+        return prevFavorites.filter((fav: SidebarItemProps) => fav.name !== item.name);
+      } else {
+        return [...prevFavorites, item];
+      }
+    });
+  };
+
+  return (
+    <Drawer
+      variant="permanent"
+      sx={(theme: Theme) => ({ width: isOpen ? drawerWidth : drawerWidthClosed })}
+    >
+      <FavoritesSection favorites={favorites} onToggleFavorite={handleToggleFavorite} />
+      {/* ...existing sidebar content... */}
+    </Drawer>
   );
 }
 
